@@ -9,6 +9,7 @@ object Response {
   object Payload {
     case class ProtocolVersion(version: String) extends Payload
     case class WriteString(string: String) extends Payload
+    case class SetPrompt(string: String) extends Payload
   }
 
 }

@@ -31,4 +31,14 @@ class ResponseParserSpec extends FlatSpec with Matchers {
       Success(Response(81, WriteString("Type checking /Users/chris/IdeaProjects/untitled/src/foo.idr"), 1)))
   }
 
+  it should "parse a write-string response containing a backslash-escaped double quote" in {
+    new ResponseParser("""000055(:write-string "Type \"checking\" /Users/chris/IdeaProjects/untitled/src/foo.idr" 1)""").Resp.run() should be(
+      Success(Response(85, WriteString("""Type "checking" /Users/chris/IdeaProjects/untitled/src/foo.idr"""), 1)))
+  }
+
+  it should "parse a set-prompt response" in {
+    new ResponseParser("""00003e(:set-prompt "*/Users/chris/IdeaProjects/untitled/src/foo" 1)""").Resp.run() should be(
+      Success(Response(62, SetPrompt("*/Users/chris/IdeaProjects/untitled/src/foo"), 1)))
+  }
+
 }

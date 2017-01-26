@@ -16,14 +16,20 @@ class ResponseParser(val input: ParserInput) extends Parser {
     )
   }
 
+  def string: Rule1[String] = rule {
+    ('"' ~ ('\\' ~ capture('"') | capture(!'"' ~ ANY)).* ~ '"') ~> ((xs: Seq[String]) => xs.mkString)
+  }
+
   def writeString: Rule1[Payload.WriteString] = rule {
-     // TODO handle escaped double quotes
-    ":write-string " ~ '"' ~ capture((!'"' ~ ANY).*)  ~ '"' ~> (
-      string => Payload.WriteString(string)
+    ":write-string " ~ string ~> (s => Payload.WriteString(s)
     )
   }
 
-  def payload: Rule1[Payload] = rule { protocolVersion | writeString }
+  def setPrompt: Rule1[Payload.SetPrompt] = rule {
+    ":set-prompt " ~ string ~> (s => Payload.SetPrompt(s))
+  }
+
+  def payload: Rule1[Payload] = rule { protocolVersion | writeString | setPrompt }
 
   def requestNum: Rule1[Int] = rule { capture(oneOrMore(Digit)) ~> ((string: String) => string.toInt) }
 

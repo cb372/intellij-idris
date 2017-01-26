@@ -3,7 +3,10 @@ package cb372.intellij.idris.repl
 import java.io._
 import java.util.concurrent.atomic.AtomicInteger
 
+import cb372.intellij.idris.repl.Response.Payload
 import com.intellij.openapi.diagnostic.LoggerRt
+
+import scala.util.{Failure, Success}
 
 object IdrisRepl {
 
@@ -14,8 +17,22 @@ object IdrisRepl {
   private val activeRequests = scala.collection.concurrent.TrieMap.empty[Int, ResponseListener]
 
   private def dispatchResponse(line: String): Unit = {
-    new ResponseParser(line)
-    // TODO parse and dispatch to appropriate listener
+    new ResponseParser(line).Resp.run() match {
+      case Success(response) =>
+        log.info(s"Received response from Idris REPL: $response")
+        val listener = activeRequests.get(response.requestNumber)
+        listener.foreach { l =>
+          response.payload match {
+            case Payload.ProtocolVersion(_) => // don't care
+            case Payload.SetPrompt(string) => l.setPrompt(string)
+            case Payload.WriteString(string) => l.writeString(string)
+          }
+        }
+        // TODO if it's an "OK" or "Error" response, remove the listener from the map
+      case Failure(e) =>
+        log.warn(s"Failed to parse Idris REPL response: $line", e)
+    }
+
   }
 
   private val (process, stdin) = {
@@ -27,6 +44,7 @@ object IdrisRepl {
       override def run(): Unit = {
         var line: String = null
         while ({ line = stdout.readLine(); line } != null) {
+          log.warn(s"Received from REPL: $line")
           dispatchResponse(line)
         }
       }
@@ -46,7 +64,9 @@ object IdrisRepl {
     val requestNumber = requestCounter.incrementAndGet()
     activeRequests.put(requestNumber, listener)
     val cmd = s"""(:load-file "${file.getCanonicalPath}")"""
-    stdin.write(RequestBuilder.toReplRequest(cmd, requestNumber))
+    val request = RequestBuilder.toReplRequest(cmd, requestNumber)
+    log.warn(s"Sending to REPL: $request")
+    stdin.write(request)
     stdin.newLine()
     stdin.flush()
   }

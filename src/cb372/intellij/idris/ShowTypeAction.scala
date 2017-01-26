@@ -12,6 +12,8 @@ import com.intellij.openapi.vfs.VirtualFile
 import java.io.File
 
 import cb372.intellij.idris.client.IdrisClient
+import cb372.intellij.idris.repl.{IdrisRepl, ResponseListener}
+import com.intellij.openapi.wm.WindowManager
 
 class ShowTypeAction extends AnAction {
   def actionPerformed(e: AnActionEvent) {
@@ -20,9 +22,14 @@ class ShowTypeAction extends AnAction {
     if (project != null && editor != null) {
       val vf: VirtualFile = FileDocumentManager.getInstance.getFile(editor.getDocument)
       if (vf != null && vf.isInLocalFileSystem) {
+        IdrisRepl.loadFile(new File(vf.getCanonicalPath), new ResponseListener {
+          override def setPrompt(string: String): Unit = {
+            WindowManager.getInstance.getStatusBar(project).setInfo(string)
+          }
+        })
         val textToQuery: String = findTextToQuery(editor)
-        val response: String = IdrisClient.showType(new File(vf.getCanonicalPath), textToQuery)
-        HintManager.getInstance.showInformationHint(editor, response)
+        //val response: String = IdrisClient.showType(new File(vf.getCanonicalPath), textToQuery)
+        //HintManager.getInstance.showInformationHint(editor, response)
       }
     }
   }
